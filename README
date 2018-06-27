@@ -1,0 +1,10 @@
+This is an implementaion of GWPE. 
+
+Run test.m to test the GWPE dereverb. (It is a litle slow ...)
+
+Reference:
+Yoshioka, Takuya, and Tomohiro Nakatani. 
+          "Generalization of multi-channel linear prediction methods for blind MIMO impulse response shortening." 
+           IEEE Transactions on Audio, Speech, and Language Processing 20.10 (2012): 2707-2720.
+   
+If you find any issues, feel free to let me know. 
