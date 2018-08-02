@@ -1,4 +1,4 @@
-addpath('tools/');
+addpath('tools/')
 addpath('dereverb/');
 wav_name = 'r_female_07_4ch.wav';
 wav_dir='./wav_example/';
@@ -8,8 +8,8 @@ multi_channel_wav=[wav_dir wav_name];
 [multi_wav, fs] = audioread(multi_channel_wav);
 
 % fft config
-fft_config.frame_len = 1024;
-fft_config.frame_shift = 256;
+fft_config.frame_len = 512;
+fft_config.frame_shift = 128;
 fft_config.fft_len = fft_config.frame_len ;
 
 % GWPE config
@@ -19,7 +19,8 @@ gwpe_config.iterations = 3;
 
 % GWPE dereverb
 [original_spec, dereverb_spec,dereverb_wav,  weight ] = GWPE( multi_wav, gwpe_config, fft_config);
-audiowrite([wav_dir 'dereverb_r_female_07_4ch.wav'], dereverb_wav, fs);
+%[~, ~,dereverb_wav, ~ ] = GWPE( multi_wav, gwpe_config, fft_config);
+audiowrite([wav_dir 'dereverb_' wav_name], dereverb_wav, fs);
 
 % Show 
 subplot(2,1,1);

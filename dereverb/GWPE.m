@@ -39,54 +39,62 @@ x = ffts;
 
 
 G = zeros(L, N*N, K);
-for iter=1:iterations
-    % V-B Scaled Identity Matrix Method is used here
-    G = zeros(L, N*N, K);
+t1 = clock;
 
-    lambda = mean(abs(x).^2, 1); % T*L
-    invlambda = 1 ./ max(lambda, 0.00001); 
-    for ll = 1:L
-        y = squeeze(ffts(:, :, ll)); %N*T
-        tmp = enframe(y(1,:) ,ones(1, K), 1); % 
-        tmp = fliplr(tmp); % keep consistent with Y(t), ..., Y(t-K+1)
-        sT = size(tmp, 1);
-        segments = zeros(N, K, sT);
-        segments(1, :, :) = tmp.';
-        for n = 2:N
-            tmp = enframe(y(n,:) ,ones(1, K), 1);
-            tmp = fliplr(tmp); 
-            segments(n, :, :)= tmp.';    
-        end
-        segments = reshape(segments, N*K, sT);
-        invlambda_l = invlambda(1,delta+K:min(delta+K+sT-1, T), ll);
-        invlambda_vec = repmat(invlambda_l, [N*K, 1]);
+% V-B Scaled Identity Matrix Method is used here
+G = zeros(L, N*N, K);
+win_func = ones(1, K);
+for ll = 1:L
+    y = squeeze(ffts(:, :, ll)); %N*T
+    tmp = enframe(y(1,:) ,win_func, 1); % 
+    tmp = fliplr(tmp); % keep consistent with Y(t), ..., Y(t-K+1)
+    sT = size(tmp, 1);
+    segments = zeros(N, K, sT);
+    segments(1, :, :) = tmp.';
+    for n = 2:N
+        tmp = enframe(y(n,:) ,win_func, 1);
+        tmp = fliplr(tmp); 
+        segments(n, :, :)= tmp.';    
+    end
+    segments = reshape(segments, N*K, sT);       
+    for iter=1:iterations   
+        lambda = mean(abs(x(:, :, ll)).^2, 1); % T
+        invlambda = 1 ./ max(lambda, 0.00001); 
+
+        invlambda_l = invlambda(1,delta+K:min(delta+K+sT-1, T));
+        %invlambda_vec = repmat(invlambda_l, [N*K, 1]);
         sT2 = size(invlambda_l, 2);
-        invlambda_l = reshape(invlambda_l, [1, 1, sT2]);
-        invlambda_mat = repmat(invlambda_l, [N*K, N*K, 1]);
+        %invlambda_l = reshape(invlambda_l, [1, 1, sT2]);
         
         R = outProdND(conj(segments(:, 1:sT2)));
-        R = R .* invlambda_mat;
-        R = sum(R, 3);
+        R = sum(bsxfun(@times, R, reshape(invlambda_l, [1, 1, sT2])),3);
+        G = zeros(N*N, K);
         for i = 1:N
-            r = repmat(y(i, delta+K:sT2+delta+K-1), N*K, 1) .* conj(segments(:, 1:sT2)) .* invlambda_vec; 
+            r = bsxfun(@times, y(i, delta+K:sT2+delta+K-1), conj(segments(:, 1:sT2)));
+            r = bsxfun(@times, r, invlambda_l);
             r = sum(r, 2);
             g = linsolve(R+eye(N*K)*0.00001, r);
-            g = conj(g);
             g = reshape(g, N, K);
-            G(ll, (i-1)*N+1:i*N, :) = g;
+            G((i-1)*N+1:i*N, :) = g;
         end
         errors = zeros(N, T);
-        for t=delta+K:T
-            for k = 1:K
-                tmpG = G(ll, :, k);
-                tmpG = reshape(tmpG, N, N);
-                errors(:, t) = errors(:, t) + tmpG' * y(:, t-delta-k+1); %(4)
-            end
+        %tmpG = G;
+        tmpG = reshape(G, N,N, K);
+        tmpG = permute(tmpG, [2,1, 3]);
+        tmpG = reshape(tmpG, N, N*K);
+%         vecy = reshape(y, N*T, 1);
+%         tmpy = enframe(vecy(delta*N:end), ones(1, N*K), N);
+%         tmpy = tmpy.';
+%         errors(:, [delta+K:T]) = tmpG * tmpy;
+        for t=delta+K:T              
+            tmpy = reshape(y(:, [t-delta:-1:t-delta-K+1]), N*K, 1);      
+            errors(:, t) = tmpG * tmpy;
         end
         x(:, :, ll) = y - errors;  %(5)
     end
 end
-
+t2 = clock;
+etime(t2,t1)
 dereverb_spec=x;
 weight =G;
 original_spec = ffts;
